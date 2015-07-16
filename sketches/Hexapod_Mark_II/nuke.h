@@ -79,8 +79,6 @@ extern ik_req_t endpoints[LEG_COUNT];
 #define RIGHT_MIDDLE   4
 #define LEFT_MIDDLE    5
 
-extern BioloidController bioloid;
-
 /* Parameters for manipulating body position */
 extern float bodyRotX;    // body roll
 extern float bodyRotY;    // body pitch
@@ -116,6 +114,7 @@ ik_sol_t legIK(int X, int Y, int Z);
 /* ties all of the above together */
 void doIK();
 /* setup the starting positions of the legs. */
-void setupIK();
+void setupIK(BioloidDynamixSerial *b);
 
 #endif
+

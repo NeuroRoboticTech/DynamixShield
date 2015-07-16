@@ -1,6 +1,6 @@
 /*
-  BioloidController.h - ArbotiX Library for Bioloid Pose Engine
-  Copyright (c) 2008-2012 Michael E. Ferguson.  All right reserved.
+  BioloidDynamixSerial - DynamixShield Library for Bioloid Pose Engine
+  Copyright (c) 2015 David Cofer.  All right reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -17,8 +17,8 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef BioloidController_h
-#define BioloidController_h
+#ifndef BioloidDynamixSerial_h
+#define BioloidDynamixSerial_h
 
 /* poses:
  *  PROGMEM prog_uint16_t name[ ] = {4,512,512,482,542}; // first number is # of servos
@@ -26,7 +26,8 @@
  *  PROGMEM transition_t name[] = {{NULL,count},{pose_name,1000},...} 
  */
 
-#include "ax12.h"
+#include <Time.h> 
+#include "DynamixelSerial.h"
 
 /* pose engine runs at 30Hz (33ms between frames) 
    recommended values for interpolateSetup are of the form X*BIOLOID_FRAME_LENGTH - 1 */
@@ -41,14 +42,14 @@ typedef struct{
 } transition_t; 
 
 /** Bioloid Controller Class for mega324p/644p clients. **/
-class BioloidController
+class BioloidDynamixSerial
 {
   public:
     /* For compatibility with legacy code */
-    BioloidController(long baud);               // baud usually 1000000
+    BioloidDynamixSerial(DynamixelSerial *dynamix);               // baud usually 1000000
     
     /* New-style constructor/setup */ 
-    BioloidController() {};
+    BioloidDynamixSerial() {};
     void setup(int servo_cnt);
 
     /* Pose Manipulation */
@@ -99,6 +100,7 @@ class BioloidController
     
     transition_t * sequence;                    // sequence we are running
     int transitions;                            // how many transitions we have left to load
-   
+
+    DynamixelSerial *controller;
 };
 #endif

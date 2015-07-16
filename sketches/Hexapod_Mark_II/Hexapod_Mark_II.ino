@@ -3,14 +3,17 @@
  *   http://arbotix.googlecode.com
  */
 
-#include <ax12.h>
-#include <BioloidController.h>
+#include <DynamixelSerial.h>
+#include <BioloidDynamixSerial.h>
 #include <Commander.h>
 #include "nuke.h"
 
 // Define one or the other depending upon which servo type you are using.
 #define AX12_HEXAPOD
 //#define AX18_HEXAPOD
+
+DynamixelSerial dynamix(&Serial2);
+BioloidDynamixSerial bioloid(&dynamix);
 
 Commander command = Commander();
 int multiplier;
@@ -30,14 +33,14 @@ int multiplier;
 void setup(){
   pinMode(0,OUTPUT);
   // setup IK
-  setupIK();
+  setupIK(&bioloid);
   gaitSelect(AMBLE_SMOOTH);
   // setup serial
   Serial.begin(38400);
 
   // wait, then check the voltage (LiPO safety)
   delay (1000);
-  float voltage = (ax12GetRegister (1, AX_PRESENT_VOLTAGE, 1)) / 10.0;
+  float voltage = 0; //////(ax12GetRegister (1, AX_PRESENT_VOLTAGE, 1)) / 10.0;
   Serial.print ("System Voltage: ");
   Serial.print (voltage);
   Serial.println (" volts.");

@@ -1,6 +1,6 @@
 /*
-  BioloidController.cpp - ArbotiX Library for Bioloid Pose Engine
-  Copyright (c) 2008-2012 Michael E. Ferguson.  All right reserved.
+  BioloidDynamixSerial - DynamixShield Library for Bioloid Pose Engine
+  Copyright (c) 2015 David Cofer.  All right reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -17,10 +17,16 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include "BioloidController.h"
+#if defined(ARDUINO) && ARDUINO >= 100  // Arduino IDE Version
+#include "Arduino.h"
+#else
+#include "WProgram.h"
+#endif
+
+#include "BioloidDynamixSerial.h"
 
 /* initializes serial1 transmit at baud, 8-N-1 */
-BioloidController::BioloidController(long baud){
+BioloidDynamixSerial::BioloidDynamixSerial(DynamixelSerial *dynamix){
     int i;
     // setup storage
     id_ = (unsigned char *) malloc(AX12_MAX_SERVOS * sizeof(unsigned char));
@@ -36,11 +42,12 @@ BioloidController::BioloidController(long baud){
     interpolating = 0;
     playing = 0;
     lastframe_ = millis();
-    ax12Init(baud);  
+	
+	controller = dynamix;
 }
 
 /* new-style setup */
-void BioloidController::setup(int servo_cnt){
+void BioloidDynamixSerial::setup(int servo_cnt){
     int i;
     // setup storage
     id_ = (unsigned char *) malloc(servo_cnt * sizeof(unsigned char));
@@ -58,55 +65,45 @@ void BioloidController::setup(int servo_cnt){
     playing = 0;
     lastframe_ = millis();
 }
-void BioloidController::setId(int index, int id){
+void BioloidDynamixSerial::setId(int index, int id){
     id_[index] = id;
 }
-int BioloidController::getId(int index){
+int BioloidDynamixSerial::getId(int index){
     return id_[index];
 }
 
 /* load a named pose from FLASH into nextpose. */
-void BioloidController::loadPose( const unsigned int * addr ){
+void BioloidDynamixSerial::loadPose( const unsigned int * addr ){
     int i;
     poseSize = pgm_read_word_near(addr); // number of servos in this pose
     for(i=0; i<poseSize; i++)
         nextpose_[i] = pgm_read_word_near(addr+1+i) << BIOLOID_SHIFT;
 }
 /* read in current servo positions to the pose. */
-void BioloidController::readPose(){
+void BioloidDynamixSerial::readPose(){
     for(int i=0;i<poseSize;i++){
-        pose_[i] = ax12GetRegister(id_[i],AX_PRESENT_POSITION_L,2)<<BIOLOID_SHIFT;
+		if(controller)
+			pose_[i] = controller->readRegister(id_[i],AX_PRESENT_POSITION_L,2)<<BIOLOID_SHIFT;
         delay(25);   
     }
 }
 /* write pose out to servos using sync write. */
-void BioloidController::writePose(){
-    int temp;
-    int length = 4 + (poseSize * 3);   // 3 = id + pos(2byte)
-    int checksum = 254 + length + AX_SYNC_WRITE + 2 + AX_GOAL_POSITION_L;
-    setTXall();
-    ax12write(0xFF);
-    ax12write(0xFF);
-    ax12write(0xFE);
-    ax12write(length);
-    ax12write(AX_SYNC_WRITE);
-    ax12write(AX_GOAL_POSITION_L);
-    ax12write(2);
-    for(int i=0; i<poseSize; i++)
-    {
-        temp = pose_[i] >> BIOLOID_SHIFT;
-        checksum += (temp&0xff) + (temp>>8) + id_[i];
-        ax12write(id_[i]);
-        ax12write(temp&0xff);
-        ax12write(temp>>8);
-    } 
-    ax12write(0xff - (checksum % 256));
-    setRX(0);
+void BioloidDynamixSerial::writePose(){
+	
+	if(controller) {
+        //Do not use speed in the synch settings
+		controller->startSyncWrite(false);  
+	
+		for(int i=0; i<poseSize; i++)
+			controller->addServoToSync(id_[i], pose_[i], 0);
+        
+        controller->writeSyncData();
+	}
 }
 
 /* set up for an interpolation from pose to nextpose over TIME 
     milliseconds by setting servo speeds. */
-void BioloidController::interpolateSetup(int time){
+void BioloidDynamixSerial::interpolateSetup(int time){
     int i;
     int frames = (time/BIOLOID_FRAME_LENGTH) + 1;
     lastframe_ = millis();
@@ -121,7 +118,7 @@ void BioloidController::interpolateSetup(int time){
     interpolating = 1;
 }
 /* interpolate our pose, this should be called at about 30Hz. */
-void BioloidController::interpolateStep(){
+void BioloidDynamixSerial::interpolateStep(){
     if(interpolating == 0) return;
     int i;
     int complete = poseSize;
@@ -153,7 +150,7 @@ void BioloidController::interpolateStep(){
 }
 
 /* get a servo value in the current pose */
-int BioloidController::getCurPose(int id){
+int BioloidDynamixSerial::getCurPose(int id){
     for(int i=0; i<poseSize; i++){
         if( id_[i] == id )
             return ((pose_[i]) >> BIOLOID_SHIFT);
@@ -161,7 +158,7 @@ int BioloidController::getCurPose(int id){
     return -1;
 }
 /* get a servo value in the next pose */
-int BioloidController::getNextPose(int id){
+int BioloidDynamixSerial::getNextPose(int id){
     for(int i=0; i<poseSize; i++){
         if( id_[i] == id )
             return ((nextpose_[i]) >> BIOLOID_SHIFT);
@@ -169,7 +166,7 @@ int BioloidController::getNextPose(int id){
     return -1;
 }
 /* set a servo value in the next pose */
-void BioloidController::setNextPose(int id, int pos){
+void BioloidDynamixSerial::setNextPose(int id, int pos){
     for(int i=0; i<poseSize; i++){
         if( id_[i] == id ){
             nextpose_[i] = (pos << BIOLOID_SHIFT);
@@ -179,7 +176,7 @@ void BioloidController::setNextPose(int id, int pos){
 }
 
 /* play a sequence. */
-void BioloidController::playSeq( const transition_t  * addr ){
+void BioloidDynamixSerial::playSeq( const transition_t  * addr ){
     sequence = (transition_t *) addr;
     // number of transitions left to load
     transitions = pgm_read_word_near(&sequence->time);
@@ -191,7 +188,7 @@ void BioloidController::playSeq( const transition_t  * addr ){
     playing = 1;
 }
 /* keep playing our sequence */
-void BioloidController::play(){
+void BioloidDynamixSerial::play(){
     if(playing == 0) return;
     if(interpolating > 0){
         interpolateStep();
