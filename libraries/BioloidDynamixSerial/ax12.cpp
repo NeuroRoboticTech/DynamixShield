@@ -28,6 +28,9 @@ unsigned char ax_rx_buffer[AX12_BUFFER_SIZE];
 unsigned char ax_tx_buffer[AX12_BUFFER_SIZE];
 unsigned char ax_rx_int_buffer[AX12_BUFFER_SIZE];
 
+int g_total_sync_servos = 0;
+unsigned char g_sync_data[AX12_MAX_SYNCH_BUFFER_SIZE];
+
 // making these volatile keeps the compiler from optimizing loops of available()
 volatile int ax_rx_Pointer;
 volatile int ax_tx_Pointer;
@@ -117,6 +120,21 @@ ISR(USART1_RX_vect){
     ax_rx_int_buffer[(ax_rx_int_Pointer++)] = UDR1;
 }
 
+int ax12MakeWord(int low, int high) 
+{
+	return (low + (high<<8));
+};
+
+int ax12GetLowByte(int val) 
+{
+	return (val & 0xff);
+};
+
+int ax12GetHighByte(int val) 
+{
+	return ((val & 0xff00)>> 8);
+};
+
 /** read back the error code for our latest packet read */
 int ax12Error;
 int ax12GetLastError(){ return ax12Error; }
@@ -201,7 +219,16 @@ int ax12GetRegister(int id, int regstart, int length){
     ax12writeB(length);
     ax12writeB(checksum);  
     setRX(id);    
-    if(ax12ReadPacket(length + 6) > 0){
+	int iReadRet = ax12ReadPacket(length + 6);
+
+	//for(int idx=0; idx<(6+length); idx++)
+	//{
+	//	Serial.print(ax_rx_buffer[idx]);  
+	//	Serial.print(", ");  
+	//}
+	//Serial.print("\n"); 
+	
+    if(iReadRet > 0){
         ax12Error = ax_rx_buffer[4];
         if(length == 1)
             return ax_rx_buffer[5];
@@ -211,6 +238,99 @@ int ax12GetRegister(int id, int regstart, int length){
         return -1;
     }
 }
+
+int ax12GetRegisters(int id, int regstart, int length, byte *regdata){  
+    setTX(id);
+    // 0xFF 0xFF ID LENGTH INSTRUCTION PARAM... CHECKSUM    
+    int checksum = ~((id + 6 + regstart + length)%256);
+    ax12writeB(0xFF);
+    ax12writeB(0xFF);
+    ax12writeB(id);
+    ax12writeB(4);    // length
+    ax12writeB(AX_READ_DATA);
+    ax12writeB(regstart);
+    ax12writeB(length);
+    ax12writeB(checksum);  
+    setRX(id);    
+	int iReadRet = ax12ReadPacket(length + 6);
+
+	//for(int idx=0; idx<(6+length); idx++)
+	//{
+	//	Serial.print(ax_rx_buffer[idx]);  
+	//	Serial.print(", ");  
+	//}
+	//Serial.print("\n"); 
+	
+    if(iReadRet > 0){
+        ax12Error = ax_rx_buffer[4];
+ 
+		if(ax12Error)
+			return -1;
+
+		//Make sure the returned length is correct.
+		if(ax_rx_buffer[3] != (length+2))
+			return -1;
+
+		checksum = 0;
+		for(int regidx=0; regidx<(3+length); regidx++)
+			checksum+=ax_rx_buffer[regidx+2];
+		checksum = (~(checksum)) & 0xFF;
+		//Serial.print("Calc sum: "); Serial.print(checksum);  
+		//Serial.print(", Sum: "); Serial.print(ax_rx_buffer[5+length]);  
+		//Serial.print("\n"); 
+
+		//If checksums do not match then we have bad data so return.
+		if(checksum != ax_rx_buffer[5+length])
+			return -1;
+
+		//Copy the data into the regdata buffer
+		memcpy(regdata, &ax_rx_buffer[5], length);
+		//for(int regidx=0; regidx<length; regidx++)
+		//{
+		//	regdata[regidx] = ax_rx_buffer[5+regidx];
+		//	checksum+=ax_rx_buffer[5+regidx];
+		//}
+
+		return 1;
+    }else{
+        return -1;
+    }
+}
+
+int ax12GetAllMovementRegisters(int id, int &pos, int &speed, 
+                                int &load, int &volt, int &temp) {
+	byte aryData[8];
+	int iRet = ax12GetRegisters(id, AX_PRESENT_POSITION_L, 8, aryData);
+	if(iRet>0) {
+		pos = ax12MakeWord(aryData[0], aryData[1]);
+		speed = ax12MakeWord(aryData[2], aryData[3]);
+		load = ax12MakeWord(aryData[4], aryData[5]);
+		volt = aryData[6];
+		temp = aryData[7];	
+	}
+	
+	return iRet;														
+}
+								
+int ax12GetKeyMovementRegisters(int id, int &pos, int &speed) {
+	byte aryData[8];
+	int iRet = ax12GetRegisters(id, AX_PRESENT_POSITION_L, 4, aryData);
+	if(iRet>0) {
+		pos = ax12MakeWord(aryData[0], aryData[1]);
+		speed = ax12MakeWord(aryData[2], aryData[3]);
+	}
+	
+	return iRet;														
+}
+
+int ax12GetAllMovementRegisterBytes(int id, byte *data) {
+	return ax12GetRegisters(id, AX_PRESENT_POSITION_L, 8, data);
+}
+
+int ax12GetKeyMovementRegisterBytes(int id, byte *data) {
+	return ax12GetRegisters(id, AX_PRESENT_POSITION_L, 4, data);
+}
+
 
 /* Set the value of a single-byte register. */
 void ax12SetRegister(int id, int regstart, int data){
@@ -244,6 +364,125 @@ void ax12SetRegister2(int id, int regstart, int data){
     ax12writeB(checksum);
     setRX(id);
     //ax12ReadPacket();
+}
+
+void ax12StartSyncWrite(){
+	g_total_sync_servos = 0;
+}
+
+void ax12AddServoToSync(int id, int goal_pos, int goal_speed) {
+	int idx = g_total_sync_servos*5;
+	//Serial.print("servos: ");  
+	//Serial.print(g_total_sync_servos);  
+	//Serial.print("idx: ");  
+	//Serial.print(idx);  
+	//Serial.print(" id: ");  
+	//Serial.print(id);  
+	//Serial.print(" pos: ");  
+	//Serial.print(goal_pos); 
+	//Serial.print(" speed: ");  
+	//Serial.print(goal_speed); 
+	//Serial.print("\n");
+	
+	g_sync_data[idx] = id;
+	g_sync_data[idx+1] = ax12GetLowByte(goal_pos);
+	g_sync_data[idx+2] = ax12GetHighByte(goal_pos);
+	g_sync_data[idx+3] = ax12GetLowByte(goal_speed);
+	g_sync_data[idx+4] = ax12GetHighByte(goal_speed);
+	g_total_sync_servos++;	
+	
+	//for(int i=0; i<(idx+5); i++)
+	//{
+	//	Serial.print(g_sync_data[i]);  
+	//	Serial.print(", ");
+	//}
+	//Serial.print("\n");
+}
+
+/* write pose out to servos using sync write. */
+void ax12WriteSyncData(bool bPrintData){
+    int temp;
+    int length = 4 + (5 * g_total_sync_servos);
+    int checksum = 254 + length + AX_SYNC_WRITE + AX_GOAL_POSITION_L + AX12_SYNC_DATA_PER_SERVO;
+    setTXall();
+    ax12write(0xFF);
+    ax12write(0xFF);
+    ax12write(0xFE);
+    ax12write(length);
+    ax12write(AX_SYNC_WRITE);
+    ax12write(AX_GOAL_POSITION_L);
+    ax12write(AX12_SYNC_DATA_PER_SERVO);
+	
+	int dataidx=0, id=0;
+    for(int servo=0; servo<g_total_sync_servos; servo++)
+    {
+		id = g_sync_data[dataidx];
+		ax12write(id);  //Write the id
+		checksum += id;
+		dataidx++;
+		
+		//Now write the data for the servo
+		for(int servo_data_idx=0; servo_data_idx<AX12_SYNC_DATA_PER_SERVO; servo_data_idx++)
+		{
+			temp = g_sync_data[dataidx];
+			checksum += temp;
+			ax12write(temp);
+			dataidx++;
+		}
+    } 
+	unsigned char sum = (0xff - (checksum % 256));
+    ax12write(sum);
+    setRX(0);
+	
+	if(bPrintData)
+		ax12PrintSyncData(length, sum);
+}
+
+void ax12PrintSyncData(int length, unsigned char checksum)
+{
+	Serial.print(0xFF);  
+	Serial.print(", ");
+
+	Serial.print(0xFF);  
+	Serial.print(", ");
+
+	Serial.print(0xFE);  
+	Serial.print(", ");
+
+	Serial.print(length);  
+	Serial.print(", ");
+
+	Serial.print(AX_SYNC_WRITE);  
+	Serial.print(", ");
+
+	Serial.print(AX_GOAL_POSITION_L);  
+	Serial.print(", ");
+
+	Serial.print(AX12_SYNC_DATA_PER_SERVO);  
+	Serial.print(", ");
+	
+	int dataidx=0, id=0, temp=0;
+    for(int servo=0; servo<g_total_sync_servos; servo++)
+    {
+		id = g_sync_data[dataidx];
+		Serial.print(id);  
+		Serial.print(", ");
+
+		dataidx++;
+		
+		//Now write the data for the servo
+		for(int servo_data_idx=0; servo_data_idx<AX12_SYNC_DATA_PER_SERVO; servo_data_idx++)
+		{
+			temp = g_sync_data[dataidx];
+			Serial.print(temp);  
+			Serial.print(", ");
+			dataidx++;
+		}
+    } 
+
+    ax12write(checksum);
+	Serial.print(checksum);  
+	Serial.print("\n");
 }
 
 // general write?

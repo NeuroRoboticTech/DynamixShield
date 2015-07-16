@@ -22,8 +22,11 @@
 #ifndef ax12_h
 #define ax12_h
 
-#define AX12_MAX_SERVOS             30
+#define AX12_MAX_SERVOS             50
 #define AX12_BUFFER_SIZE            32
+#define AX12_SYNC_DATA_PER_SERVO	4
+#define AX12_SYNC_TOTAL_PER_SERVO	5
+#define AX12_MAX_SYNCH_BUFFER_SIZE  250
 
 /** Configuration **/
 #if defined(ARBOTIX)
@@ -131,6 +134,9 @@
 #define AX_OBSTACLE_DETECTION       32
 #define AX_BUZZER_INDEX             40
 
+extern int g_total_sync_servos;
+extern unsigned char g_sync_data[AX12_MAX_SYNCH_BUFFER_SIZE];
+
 void ax12Init(long baud);
 
 void setTXall();     // for sync write
@@ -140,11 +146,26 @@ void setRX(int id);
 void ax12write(unsigned char data);
 void ax12writeB(unsigned char data);
 
+int ax12MakeWord(int low, int high);
+int ax12GetLowByte(int val);
+int ax12GetHighByte(int val);
+
 int ax12ReadPacket(int length);
 int ax12GetRegister(int id, int regstart, int length);
+int ax12GetRegisters(int id, int regstart, int length, int *regdata);
+int ax12GetAllMovementRegisters(int id, int &pos, int &speed, 
+                                int &load, int &volt, int &temp);
+int ax12GetKeyMovementRegisters(int id, int &pos, int &speed);
+int ax12GetAllMovementRegisterBytes(int id, byte *data);
+int ax12GetKeyMovementRegisterBytes(int id, byte *data);
 void ax12SetRegister(int id, int regstart, int data);
 void ax12SetRegister2(int id, int regstart, int data);
 int ax12GetLastError();
+
+void ax12StartSyncWrite();
+void ax12AddServoToSync(int id, int goal_pos, int goal_speed);
+void ax12WriteSyncData(bool bPrintData = false);
+void ax12PrintSyncData(int length, unsigned char checksum);
 
 extern unsigned char ax_rx_buffer[AX12_BUFFER_SIZE];
 extern unsigned char ax_tx_buffer[AX12_BUFFER_SIZE];
@@ -156,8 +177,29 @@ extern unsigned char dynamixel_bus_config[AX12_MAX_SERVOS];
 
 #define SetPosition(id, pos) (ax12SetRegister2(id, AX_GOAL_POSITION_L, pos))
 #define GetPosition(id) (ax12GetRegister(id, AX_PRESENT_POSITION_L, 2))
+#define SetSpeed(id, speed) (ax12SetRegister2(id, AX_GOAL_SPEED_L, speed))
+#define GetSpeed(id) (ax12GetRegister(id, AX_PRESENT_SPEED_L, 2))
 #define TorqueOn(id) (ax12SetRegister(id, AX_TORQUE_ENABLE, 1))
 #define Relax(id) (ax12SetRegister(id, AX_TORQUE_ENABLE, 0))
+#define SetCWLimit(id, limit) (ax12SetRegister2(id, AX_CW_ANGLE_LIMIT_L, limit))
+#define GetCWLimit(id) (ax12GetRegister(id, AX_CW_ANGLE_LIMIT_L, 2))
+#define SetCCWLimit(id, limit) (ax12SetRegister2(id, AX_CCW_ANGLE_LIMIT_L, limit))
+#define GetCCWLimit(id) (ax12GetRegister(id, AX_CCW_ANGLE_LIMIT_L, 2))
+#define SetMaxTorque(id, limit) (ax12SetRegister2(id, AX_MAX_TORQUE_L, limit))
+#define GetMaxTorque(id) (ax12GetRegister(id, AX_MAX_TORQUE_L, 2))
+#define SetTorqueLimit(id, limit) (ax12SetRegister2(id, AX_TORQUE_LIMIT_L, limit))
+#define GetTorqueLimit(id) (ax12GetRegister(id, AX_TORQUE_LIMIT_L, 2))
+#define SetReturnDelayTime(id, time) (ax12SetRegister(id, AX_RETURN_DELAY_TIME, time))
+#define GetReturnDelayTime(id) (ax12GetRegister(id, AX_RETURN_DELAY_TIME, 1))
+#define IsMoving(id) (ax12GetRegister(id, AX_MOVING, 1))
+#define SetCWComplianceMargin(id, limit) (ax12SetRegister(id, AX_CW_COMPLIANCE_MARGIN, limit))
+#define GetCWComplianceMargin(id) (ax12GetRegister(id, AX_CW_COMPLIANCE_MARGIN, 1))
+#define SetCCWComplianceMargin(id, limit) (ax12SetRegister(id, AX_CCW_COMPLIANCE_MARGIN, limit))
+#define GetCCWComplianceMargin(id) (ax12GetRegister(id, AX_CCW_COMPLIANCE_MARGIN, 1))
+#define SetCWComplianceSlope(id, limit) (ax12SetRegister(id, AX_CW_COMPLIANCE_SLOPE, limit))
+#define GetCWComplianceSlope(id) (ax12GetRegister(id, AX_CW_COMPLIANCE_SLOPE, 1))
+#define SetCCWComplianceSlope(id, limit) (ax12SetRegister(id, AX_CCW_COMPLIANCE_SLOPE, limit))
+#define GetCCWComplianceSlope(id) (ax12GetRegister(id, AX_CCW_COMPLIANCE_SLOPE, 1))
 
 #define GetLeftIRData(id) (ax12GetRegister(id, AX_LEFT_IR_DATA))
 #define GetCenterIRData(id) (ax12GetRegister(id, AX_CENTER_IR_DATA))
