@@ -26,7 +26,6 @@
  *  PROGMEM transition_t name[] = {{NULL,count},{pose_name,1000},...} 
  */
 
-#include <Time.h> 
 #include "DynamixelSerial.h"
 
 /* pose engine runs at 30Hz (33ms between frames) 

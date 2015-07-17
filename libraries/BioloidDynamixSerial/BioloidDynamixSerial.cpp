@@ -82,8 +82,11 @@ void BioloidDynamixSerial::loadPose( const unsigned int * addr ){
 /* read in current servo positions to the pose. */
 void BioloidDynamixSerial::readPose(){
     for(int i=0;i<poseSize;i++){
-		if(controller)
-			pose_[i] = controller->readRegister(id_[i],AX_PRESENT_POSITION_L,2)<<BIOLOID_SHIFT;
+		if(controller) {
+            int pos = controller->readRegister(id_[i],AX_PRESENT_POSITION_L,2);
+			pose_[i] = pos<<BIOLOID_SHIFT;
+            Serial.print("Read: "); Serial.print(id_[i]); Serial.print(" = "); Serial.println(pos);
+        }
         delay(25);   
     }
 }
@@ -91,13 +94,23 @@ void BioloidDynamixSerial::readPose(){
 void BioloidDynamixSerial::writePose(){
 	
 	if(controller) {
+        //Serial.println("Start writePose");
         //Do not use speed in the synch settings
 		controller->startSyncWrite(false);  
 	
-		for(int i=0; i<poseSize; i++)
-			controller->addServoToSync(id_[i], pose_[i], 0);
+		for(int i=0; i<poseSize; i++) {
+            int pos = pose_[i] >> BIOLOID_SHIFT;
+            //Serial.print("servo: "); Serial.print(id_[i]);
+            //Serial.print("pos: "); Serial.println(pos);
+            
+			controller->addServoToSync(id_[i], pos, 0);
+        }
         
         controller->writeSyncData();
+        //Serial.println("Finished writePose");
+        //Serial.println("");
+        //Serial.println("");
+       // delay(1000);
 	}
 }
 

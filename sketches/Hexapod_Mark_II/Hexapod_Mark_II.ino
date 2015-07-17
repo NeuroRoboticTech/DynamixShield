@@ -30,13 +30,55 @@ int multiplier;
 #define TOP_SPEED      12
 #endif
 
+void configureServos() {
+  SetSystemCoreClockFor1Mbaud();
+
+  // setup serial
+  Serial.begin(57600);
+  while(!Serial);
+  Serial.println("Starting setup");
+
+  dynamix.begin (1000000, 22); 
+  
+//  Serial.println("Set status return level");
+//  for(int servo=1; servo<=18; servo++) {
+//    dynamix.setStatusReturnLevel(servo, 1);
+//    delay(50);
+//  }
+  
+//  Serial.println("Set servo mode");
+//  //Set the all servos to not be in wheel mode
+//  for(int servo=1; servo<=18; servo++) {
+//    dynamix.setEndless(servo, false);
+//    delay(50);
+//  }
+
+//  Serial.println("Set limits");
+//  //Set limits for all servos
+//  for(int servo=1; servo<=18; servo++) {
+//    dynamix.setCWLimit(servo, 0);
+//    delay(50);
+//    dynamix.setCCWLimit(servo, 1023);
+//    delay(50);
+//  }
+
+//  Serial.println("Set defualt position");
+//  //reset all servos to start position
+//  for(int servo=1; servo<=18; servo++) {
+//    dynamix.moveSpeed(servo, 512, 100);
+//    delay(50);
+//  }
+
+  Serial.println("Finished servo config");
+}
+
 void setup(){
+  configureServos();
+  
   pinMode(0,OUTPUT);
   // setup IK
   setupIK(&bioloid);
   gaitSelect(AMBLE_SMOOTH);
-  // setup serial
-  Serial.begin(38400);
 
   // wait, then check the voltage (LiPO safety)
   delay (1000);
@@ -44,19 +86,26 @@ void setup(){
   Serial.print ("System Voltage: ");
   Serial.print (voltage);
   Serial.println (" volts.");
-  if (voltage < 10.0)
-    while(1);
+  //if (voltage < 10.0)
+  //  while(1);
 
   // stand up slowly
   bioloid.poseSize = 18;
+  Serial.println ("Reading poses");
   bioloid.readPose();
+  Serial.println ("Doing IK");
   doIK();
+  Serial.println ("interpolateSetup");
   bioloid.interpolateSetup(1000);
+
+  Serial.println ("interpolating");
   while(bioloid.interpolating > 0){
     bioloid.interpolateStep();
     delay(3);
   }
   multiplier = AMBLE_SPEED;
+
+  Serial.println ("Finished setup");
 }
 
 void loop(){
