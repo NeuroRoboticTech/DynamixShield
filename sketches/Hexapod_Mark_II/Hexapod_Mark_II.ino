@@ -5,7 +5,7 @@
 
 #include <DynamixelSerial.h>
 #include <BioloidDynamixSerial.h>
-#include <Commander.h>
+#include <CommanderHS.h>
 #include "nuke.h"
 
 // Define one or the other depending upon which servo type you are using.
@@ -15,7 +15,7 @@
 DynamixelSerial dynamix(&Serial2);
 BioloidDynamixSerial bioloid(&dynamix);
 
-Commander command = Commander();
+CommanderHS command = CommanderHS(&Serial3);
 int multiplier;
 
 #define RIPPLE_SPEED    1
@@ -38,8 +38,12 @@ void configureServos() {
   while(!Serial);
   Serial.println("Starting setup");
 
+  //Start the dynamixel serial controller
   dynamix.begin (1000000, 22); 
-  
+
+  //Start the XBee commander controller.
+  command.begin(38400);
+    
 //  Serial.println("Set status return level");
 //  for(int servo=1; servo<=18; servo++) {
 //    dynamix.setStatusReturnLevel(servo, 1);
@@ -116,26 +120,32 @@ void loop(){
     if(command.buttons&BUT_R1){ 
       gaitSelect(RIPPLE_SMOOTH); 
       multiplier=RIPPLE_SPEED;
+      Serial.println("RIPPLE_SMOOTH");
     }
     if(command.buttons&BUT_R2){ 
       gaitSelect(AMBLE_SMOOTH); 
       multiplier=AMBLE_SPEED;
+      Serial.println("AMBLE_SMOOTH");
     }
     if(command.buttons&BUT_R3){ 
       gaitSelect(RIPPLE); 
       multiplier=RIPPLE_SPEED;
+      Serial.println("RIPPLE");
     }
     if(command.buttons&BUT_L4){ 
       gaitSelect(AMBLE); 
       multiplier=AMBLE_SPEED;
+      Serial.println("AMBLE");
     }
     if(command.buttons&BUT_L5){ 
       gaitSelect(TRIPOD); 
       multiplier=TRIPOD_SPEED;
+      Serial.println("TRIPOD");
     }
     if(command.buttons&BUT_L6){ 
       gaitSelect(TRIPOD); 
       multiplier=TOP_SPEED;
+      Serial.println("TRIPOD_TOP");
     }
     // set movement speed
     if((command.walkV) > 5 || (command.walkV < -5) ){
