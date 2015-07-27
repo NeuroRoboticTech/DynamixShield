@@ -3,6 +3,7 @@
  *   http://arbotix.googlecode.com
  */
 
+#include <Servo.h>   //include the servo library to control the RobotGeek Servos
 #include <DynamixelSerial.h>
 #include <BioloidDynamixSerial.h>
 #include <CommanderHS.h>
@@ -11,6 +12,33 @@
 // Define one or the other depending upon which servo type you are using.
 #define AX12_HEXAPOD
 //#define AX18_HEXAPOD
+
+#define INCLUDE_GRIPPER
+
+#ifdef INCLUDE_GRIPPER
+  #define WRIST_SERVO_PIN 2  //pin that the wrist servo will be attached to
+  #define GRIPPER_SERVO_PIN 4  //pin that the gripper 9g servo will be attached to
+
+  #define WRIST_MIN 60
+  #define WRIST_MAX 120
+
+  #define GRIPPER_MIN 0
+  #define GRIPPER_MAX 150
+
+  //gripper and wrist servos
+  Servo wristServo;
+  Servo gripperServo;   //create an servo object for the 9g FT-FS90MG micro servo
+
+  int wristPos = 90;  //Start at 90 degrees
+  int wristAdd = 0;  //Start at 0 degrees add
+
+  int gripperPos = 150;  //Start at 150 degrees
+  int gripperAdd = 0;  //Start at 0 degrees add
+
+  bool controlGripper = true;
+  bool lastChangeActive = false;
+  
+#endif
 
 DynamixelSerial dynamix(&Serial2);
 BioloidDynamixSerial bioloid(&dynamix);
@@ -73,6 +101,14 @@ void configureServos() {
 //    delay(50);
 //  }
 
+#ifdef INCLUDE_GRIPPER
+  //attach and set gripper and wrist servos  
+  gripperServo.attach(GRIPPER_SERVO_PIN);
+  gripperServo.write(gripperPos);    // sets the servo position to 150 degress, positioning the servo for the gripper
+  wristServo.attach(WRIST_SERVO_PIN);
+  wristServo.write(wristPos);    // sets the servo position to 90 degress, centered
+#endif
+
   Serial.println("Finished servo config");
 }
 
@@ -111,6 +147,79 @@ void setup(){
 
   Serial.println ("Finished setup");
 }
+
+#ifdef INCLUDE_GRIPPER
+
+void processGripperSelection() {
+
+  if( (command.buttons&BUT_RT) && (command.buttons&BUT_LT) ) {
+    if(!lastChangeActive) {
+      controlGripper = !controlGripper;
+      lastChangeActive = true;
+      //Serial.print("setting controlgrip: "); Serial.println(controlGripper);
+    }
+  }
+  else {
+    lastChangeActive = false;
+  }
+
+  //Serial.print("controlgrip: "); Serial.print(controlGripper);
+  //Serial.print(" lastchange : "); Serial.println(lastChangeActive);    
+}
+
+void processWrist() {
+  if(command.buttons&BUT_LT){
+    wristAdd = -2;
+  }
+  else if(command.buttons&BUT_RT){
+    wristAdd = 2;
+  }
+  else {
+    wristAdd = 0;
+  }
+
+  if(wristAdd != 0) {
+    wristPos += wristAdd;
+    if(wristPos > WRIST_MAX) {
+      wristPos = WRIST_MAX;
+    }
+    else if(wristPos < WRIST_MIN) {
+      wristPos = WRIST_MIN;
+    }
+    wristServo.write(wristPos);
+    
+    //Serial.print("Wrist Add: "); Serial.print(wristAdd);
+    //Serial.print("  Wrist Pos: "); Serial.println(wristPos);    
+  }
+}
+
+void processGripper() {
+  if(command.buttons&BUT_LT){
+    gripperAdd = -2;
+  }
+  else if(command.buttons&BUT_RT){
+    gripperAdd = 2;
+  }
+  else {
+    gripperAdd = 0;
+  }
+
+  if(gripperAdd != 0) {
+    gripperPos += gripperAdd;
+    if(gripperPos > GRIPPER_MAX) {
+      gripperPos = GRIPPER_MAX;
+    }
+    else if(gripperPos < GRIPPER_MIN) {
+      gripperPos = GRIPPER_MIN;
+    }
+    gripperServo.write(gripperPos);
+    
+    //Serial.print("Grip Add: "); Serial.print(gripperAdd);
+    //Serial.print("  Grip Pos: "); Serial.println(gripperPos);    
+  }
+}
+
+#endif
 
 void loop(){
   // take commands
@@ -172,6 +281,19 @@ void loop(){
       Rspeed = 0;
     }
     
+#ifdef INCLUDE_GRIPPER
+    processGripperSelection();
+
+    if(!lastChangeActive) {
+      if(controlGripper) {
+        processGripper();
+      }
+      else {
+        processWrist();
+      }    
+    }
+#endif
+    
 // Use the phoenix code if you want pretty body rotation. :)    
 //
 //    if((command.buttons&BUT_LT) > 0){
@@ -191,5 +313,5 @@ void loop(){
     bioloid.interpolateSetup(tranTime);
   }
   // update joints
-  bioloid.interpolateStep();
+  bioloid.interpolateStep();  
 }
