@@ -16,11 +16,11 @@
 #define INCLUDE_GRIPPER
 
 #ifdef INCLUDE_GRIPPER
-  #define WRIST_SERVO_PIN 2  //pin that the wrist servo will be attached to
-  #define GRIPPER_SERVO_PIN 4  //pin that the gripper 9g servo will be attached to
+  #define WRIST_ID 19  //Servo ID that the wrist servo will be attached to
+  #define GRIPPER_SERVO_PIN 2  //pin that the gripper 9g servo will be attached to
 
-  #define WRIST_MIN 60
-  #define WRIST_MAX 120
+  #define WRIST_MIN 312
+  #define WRIST_MAX 712
 
   #define GRIPPER_MIN 0
   #define GRIPPER_MAX 150
@@ -29,15 +29,18 @@
   Servo wristServo;
   Servo gripperServo;   //create an servo object for the 9g FT-FS90MG micro servo
 
-  int wristPos = 90;  //Start at 90 degrees
+  int wristPos = 512;  //Start at 90 degrees
   int wristAdd = 0;  //Start at 0 degrees add
 
   int gripperPos = 150;  //Start at 150 degrees
   int gripperAdd = 0;  //Start at 0 degrees add
+  int gripPressure = 0;  //Pressure applied to grip
 
   bool controlGripper = true;
   bool lastChangeActive = false;
-  
+
+  const int pressurePin = A11;
+
 #endif
 
 DynamixelSerial dynamix(&Serial2);
@@ -101,12 +104,13 @@ void configureServos() {
 //    delay(50);
 //  }
 
+
 #ifdef INCLUDE_GRIPPER
+  dynamix.moveSpeed (WRIST_ID, 512, 150);
+
   //attach and set gripper and wrist servos  
   gripperServo.attach(GRIPPER_SERVO_PIN);
   gripperServo.write(gripperPos);    // sets the servo position to 150 degress, positioning the servo for the gripper
-  wristServo.attach(WRIST_SERVO_PIN);
-  wristServo.write(wristPos);    // sets the servo position to 90 degress, centered
 #endif
 
   Serial.println("Finished servo config");
@@ -169,10 +173,10 @@ void processGripperSelection() {
 
 void processWrist() {
   if(command.buttons&BUT_LT){
-    wristAdd = -2;
+    wristAdd = -5;
   }
   else if(command.buttons&BUT_RT){
-    wristAdd = 2;
+    wristAdd = 5;
   }
   else {
     wristAdd = 0;
@@ -186,7 +190,7 @@ void processWrist() {
     else if(wristPos < WRIST_MIN) {
       wristPos = WRIST_MIN;
     }
-    wristServo.write(wristPos);
+    dynamix.moveSpeed (WRIST_ID, wristPos, 0);
     
     //Serial.print("Wrist Add: "); Serial.print(wristAdd);
     //Serial.print("  Wrist Pos: "); Serial.println(wristPos);    
@@ -194,11 +198,14 @@ void processWrist() {
 }
 
 void processGripper() {
+
+  gripPressure = analogRead(pressurePin);
+
   if(command.buttons&BUT_LT){
-    gripperAdd = -2;
+    gripperAdd = -5;
   }
-  else if(command.buttons&BUT_RT){
-    gripperAdd = 2;
+  else if(command.buttons&BUT_RT && gripPressure < 850) {
+    gripperAdd = 5;
   }
   else {
     gripperAdd = 0;
@@ -214,7 +221,8 @@ void processGripper() {
     }
     gripperServo.write(gripperPos);
     
-    //Serial.print("Grip Add: "); Serial.print(gripperAdd);
+    //Serial.print("Grip Pressuer: "); Serial.print(gripPressure);
+    //Serial.print("  Grip Add: "); Serial.print(gripperAdd);
     //Serial.print("  Grip Pos: "); Serial.println(gripperPos);    
   }
 }
