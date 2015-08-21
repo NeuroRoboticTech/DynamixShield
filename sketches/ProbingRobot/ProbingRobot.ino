@@ -30,7 +30,7 @@ Servo gripperServo;   //create an servo object for the 9g FT-FS90MG micro servo
 #define RIGHT_CLAW_POS_MIN 312
 #define RIGHT_CLAW_POS_MAX 612
 
-#define ENABLE_DEBUG 1
+//#define ENABLE_DEBUG 1
 
 int wristPos = 512;
 int leftClawPos = 512;
