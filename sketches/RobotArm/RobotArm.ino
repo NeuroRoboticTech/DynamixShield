@@ -1,6 +1,6 @@
 #include <DynamixelSerial.h>
 
-//#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG 1
 
 #define SERVO_COUNT 5
 #define AXIS_COUNT 4
@@ -26,7 +26,7 @@ int axisID[AXIS_COUNT];
 int axisPos[AXIS_COUNT];
 int gripPressure = 0;
 
-DynamixelSerial Dynamixel(&Serial2);
+DynamixelSerial Dynamixel(&Serial1);
 
 void setServoDelayReturnTime(int time) {
   for(int i=0; i<SERVO_COUNT; i++)
@@ -50,7 +50,7 @@ void setServoPositions(int pos) {
 }
 
 void setup () {
-   SetSystemCoreClockFor1Mbaud();
+   //SetSystemCoreClockFor1Mbaud();
  
 #ifdef ENABLE_DEBUG  
   Serial.begin(57600);

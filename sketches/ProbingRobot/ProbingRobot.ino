@@ -1,3 +1,4 @@
+#include <Servo.h>   //include the servo library to control the RobotGeek Servos
 #include "CommanderHS.h"
 #include <DynamixelSerial.h>
   
@@ -11,10 +12,14 @@
 #define RIGHT_REAR_WHEEL_ID 4
 //Servo 5: Claw wrist
 #define CLAW_WRIST_ID 5
-//Servo 6: Right Claw
-#define RIGHT_CLAW_ID 6
-//Servo 7: Left claw
-#define LEFT_CLAW_ID 7
+
+//Standard Servo Left claw
+#define GRIPPER_SERVO_PIN 2
+
+#define GRIPPER_MIN 0
+#define GRIPPER_MAX 150
+
+Servo gripperServo;   //create an servo object for the 9g FT-FS90MG micro servo
 
 #define WRIST_POS_MIN 312
 #define WRIST_POS_MAX 612
@@ -25,11 +30,14 @@
 #define RIGHT_CLAW_POS_MIN 312
 #define RIGHT_CLAW_POS_MAX 612
 
-//#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG 1
 
 int wristPos = 512;
 int leftClawPos = 512;
 int rightClawPos = 512;
+
+int gripperPos = 150;  //Start at 150 degrees
+int gripperAdd = 0;  //Start at 0 degrees add
 
 int currentLeftSpeed = 0;
 int currentRightSpeed = 0;
@@ -41,7 +49,7 @@ float sign(float value) {
 
 CommanderHS command = CommanderHS(&Serial3);
   
-DynamixelSerial Dynamixel(&Serial2);
+DynamixelSerial Dynamixel(&Serial1);
 
 //float toRadians(float degrees) {return ((degrees * 71) / 4068));
 
@@ -134,12 +142,12 @@ void processWheels() {
     rightSpeed = 1023 * rightRatio * multiplier;
     
 #ifdef ENABLE_DEBUG
-      Serial.print("ratio: "); Serial.print(ratio); 
-      Serial.print(", left ratio: "); Serial.print(leftRatio); 
-      Serial.print(", right ratio: "); Serial.print(rightRatio); 
-      Serial.print(", speed norm: "); Serial.print(speedNorm); 
-      Serial.print(", left speed: "); Serial.print(leftSpeed); 
-      Serial.print(", right speed: "); Serial.println(rightSpeed); 
+      //Serial.print("ratio: "); Serial.print(ratio); 
+      //Serial.print(", left ratio: "); Serial.print(leftRatio); 
+      //Serial.print(", right ratio: "); Serial.print(rightRatio); 
+      //Serial.print(", speed norm: "); Serial.print(speedNorm); 
+      //Serial.print(", left speed: "); Serial.print(leftSpeed); 
+      //Serial.print(", right speed: "); Serial.println(rightSpeed); 
 #endif    
   }
 
@@ -154,34 +162,32 @@ void processWrist() {
     wristPos += wristAdd;
 
 #ifdef ENABLE_DEBUG
-  //Serial.print("Wrist Pos: "); Serial.println(wristPos); 
+  Serial.print("Wrist Pos: "); Serial.println(wristPos); 
 #endif
+
   if(wristAdd != 0) {
     Dynamixel.moveSpeed(CLAW_WRIST_ID, wristPos, 700);
     delay(10);
   }
 }
 
-void processClaw() {
+void processGripper() {
 
-  int clawAdd = map(command.lookH, -102, 102, -10, 10);
+  int gripperAdd = map(command.lookH, -102, 102, -10, 10);
   
-  if((leftClawPos+clawAdd >= LEFT_CLAW_POS_MIN) && (leftClawPos+clawAdd <= LEFT_CLAW_POS_MAX) )
-    leftClawPos += clawAdd;
-  if((rightClawPos-clawAdd >= RIGHT_CLAW_POS_MIN) && (rightClawPos-clawAdd <= RIGHT_CLAW_POS_MAX) )
-    rightClawPos -= clawAdd;
-
-#ifdef ENABLE_DEBUG
-    //Serial.print("Left Claw: "); Serial.print(leftClawPos); 
-    //Serial.print(",  Right Claw: "); Serial.println(rightClawPos); 
-#endif
-
-    if(clawAdd != 0) {
-      Dynamixel.moveSpeed(LEFT_CLAW_ID, leftClawPos, 700);
-      delay(10);
-      Dynamixel.moveSpeed(RIGHT_CLAW_ID, rightClawPos, 700);
-      delay(10);
+  if(gripperAdd != 0) {
+    gripperPos += gripperAdd;
+    if(gripperPos > GRIPPER_MAX) {
+      gripperPos = GRIPPER_MAX;
     }
+    else if(gripperPos < GRIPPER_MIN) {
+      gripperPos = GRIPPER_MIN;
+    }
+    gripperServo.write(gripperPos);
+    
+    Serial.print("Grip Add: "); Serial.print(gripperAdd);
+    Serial.print("  Grip Pos: "); Serial.println(gripperPos);    
+  }
 }
 
 bool processFastTurns() {
@@ -232,18 +238,18 @@ void checkCommander() {
       processWheels();
   
     processWrist();
-    processClaw();
+    processGripper();
 
     //If the commander data has changed then fill out the
     //custom sysex byte array and send it.    
 #ifdef ENABLE_DEBUG
-     //Serial.print("Commander ");
-     //Serial.print(", WalkV: "); Serial.print(command.walkV); 
-     //Serial.print(", WalkH: "); Serial.print(command.walkH); 
-     //Serial.print(", LookV: "); Serial.print(command.lookV); 
-     //Serial.print(", LookH: "); Serial.print(command.lookH); 
-     //Serial.print(", Buttons: "); Serial.print(command.buttons); 
-     //Serial.println ("");
+     Serial.print("Commander ");
+     Serial.print(", WalkV: "); Serial.print(command.walkV); 
+     Serial.print(", WalkH: "); Serial.print(command.walkH); 
+     Serial.print(", LookV: "); Serial.print(command.lookV); 
+     Serial.print(", LookH: "); Serial.print(command.lookH); 
+     Serial.print(", Buttons: "); Serial.print(command.buttons); 
+     Serial.println ("");
 #endif
   }  
 }
@@ -259,10 +265,6 @@ void configureServos() {
   Dynamixel.setStatusReturnLevel(RIGHT_FRONT_WHEEL_ID, 1);
   delay(50);
   Dynamixel.setStatusReturnLevel(CLAW_WRIST_ID, 1);
-  delay(50);
-  Dynamixel.setStatusReturnLevel(LEFT_CLAW_ID, 1);
-  delay(50);
-  Dynamixel.setStatusReturnLevel(RIGHT_CLAW_ID, 1);
   delay(50);
   
   //Set the wheels to be in wheel mode
@@ -280,16 +282,6 @@ void configureServos() {
   Dynamixel.setCCWLimit(CLAW_WRIST_ID, WRIST_POS_MAX);
   delay(50);
   
-  Dynamixel.setCWLimit(LEFT_CLAW_ID, LEFT_CLAW_POS_MIN);
-  delay(50);
-  Dynamixel.setCCWLimit(LEFT_CLAW_ID, LEFT_CLAW_POS_MAX);
-  delay(50);
-  
-  Dynamixel.setCWLimit(RIGHT_CLAW_ID, RIGHT_CLAW_POS_MIN);
-  delay(50);
-  Dynamixel.setCCWLimit(RIGHT_CLAW_ID, RIGHT_CLAW_POS_MAX);
-  delay(50);
-  
   Dynamixel.turn(LEFT_REAR_WHEEL_ID, 1, 0);
   delay(50);
   Dynamixel.turn(LEFT_FRONT_WHEEL_ID, 1, 0);
@@ -301,10 +293,10 @@ void configureServos() {
   
   Dynamixel.moveSpeed(CLAW_WRIST_ID, 512, 0);
   delay(50);
-  Dynamixel.moveSpeed(LEFT_CLAW_ID, 512, 0);
-  delay(50);
-  Dynamixel.moveSpeed(RIGHT_CLAW_ID, 512, 0);
-  delay(50);
+  
+  //attach and set gripper and wrist servos  
+  gripperServo.attach(GRIPPER_SERVO_PIN);
+  gripperServo.write(gripperPos);    // sets the servo position to 150 degress, positioning the servo for the gripper
 } 
 
 void configureCommanderOffsets() {

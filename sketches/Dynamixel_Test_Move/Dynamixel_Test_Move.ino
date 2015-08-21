@@ -6,7 +6,8 @@
 DynamixelSerial Dynamixel(&Serial1);
 
 void setup () {
- 
+    SetSystemCoreClockFor1Mbaud();
+    
   //#define SYS_BOARD_PLLAR (CKGR_PLLAR_ONE | CKGR_PLLAR_MULA(39UL) | CKGR_PLLAR_PLLACOUNT(100UL) | CKGR_PLLAR_DIVA(3UL))
   //#define SYS_BOARD_MCKR ( PMC_MCKR_PRES_CLK_2 | PMC_MCKR_CSS_PLLA_CLK)
           
@@ -129,8 +130,8 @@ void loop () {
  // digitalWrite(22, HIGH);   // turn the LED on (HIGH is the voltage level)
   Serial.println("Move 450");
   Dynamixel.moveSpeed (SERVO_ID1, 450, 30);  //.move(1, 450);, 30
-  delay(100);
-  Dynamixel.moveSpeed(SERVO_ID2, 650, 30);  //.move(1, 450);
+  //delay(100);
+  //Dynamixel.moveSpeed(SERVO_ID2, 650, 30);  //.move(1, 450);
 
   //delay(2000);
   //int Position = Dynamixel.readPosition(1);       // Request and Print the Position 
@@ -143,8 +144,8 @@ void loop () {
   //digitalWrite(22, LOW);   // turn the LED on (HIGH is the voltage level)
   Serial.println("Move 650");
   Dynamixel.moveSpeed(SERVO_ID1, 650, 30); 
-  delay(100);
-  Dynamixel.moveSpeed(SERVO_ID2, 450, 30); 
+  //delay(100);
+  //Dynamixel.moveSpeed(SERVO_ID2, 450, 30); 
    //Dynamixel.move(1, 650);
    
   delay(2000);
