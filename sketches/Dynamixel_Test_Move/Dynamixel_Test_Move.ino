@@ -3,7 +3,7 @@
 #define SERVO_ID1 1
 #define SERVO_ID2 3
 
-DynamixelSerial Dynamixel(&Serial1);
+DynamixelSerial Dynamixel(&Serial2);
 
 void setup () {
     SetSystemCoreClockFor1Mbaud();
@@ -47,9 +47,9 @@ void setup () {
   //Serial.println(ret_delay);
   
   delay (100); 
-  Dynamixel.move (SERVO_ID1,512);
+  Dynamixel.move2 (SERVO_ID1,512);
   delay (100); 
-  Dynamixel.move (SERVO_ID2,512);
+  Dynamixel.move2 (SERVO_ID2,512);
   delay(1000);
   
   //ref_pos = Dynamixel.readPosition(1);
@@ -129,7 +129,8 @@ void ReadPos(int servo, int target)
 void loop () { 
  // digitalWrite(22, HIGH);   // turn the LED on (HIGH is the voltage level)
   Serial.println("Move 450");
-  Dynamixel.moveSpeed (SERVO_ID1, 450, 30);  //.move(1, 450);, 30
+  Dynamixel.move2(SERVO_ID1, 450);  //.move(1, 450);, 30
+  //Dynamixel.moveSpeed (SERVO_ID1, 450, 30);  //.move(1, 450);, 30
   //delay(100);
   //Dynamixel.moveSpeed(SERVO_ID2, 650, 30);  //.move(1, 450);
 
@@ -140,15 +141,16 @@ void loop () {
 
   //ReadPosWithError(SERVO_ID1, 450);
   
-  delay (2000); 
+  delay (500); 
   //digitalWrite(22, LOW);   // turn the LED on (HIGH is the voltage level)
   Serial.println("Move 650");
-  Dynamixel.moveSpeed(SERVO_ID1, 650, 30); 
+  Dynamixel.move2(SERVO_ID1, 650); 
+  //Dynamixel.moveSpeed(SERVO_ID1, 650, 30); 
   //delay(100);
   //Dynamixel.moveSpeed(SERVO_ID2, 450, 30); 
    //Dynamixel.move(1, 650);
    
-  delay(2000);
+  delay(500);
   //Position = Dynamixel.readPosition(1);       // Request and Print the Position 
   //Serial.print("Position: ");
   //Serial.println(Position);

@@ -184,10 +184,10 @@
 #define AX_CCW_AL_L                  255 
 #define AX_CCW_AL_H                  3
 #define TIME_OUT                     10         // Este parametro depende de la velocidad de transmision
-#define TX_DELAY_TIME				 20        // Este parametro depende de la velocidad de transmision - pero pueden ser cambiados para mayor velocidad.
+#define TX_DELAY_TIME				 300        // Este parametro depende de la velocidad de transmision - pero pueden ser cambiados para mayor velocidad.
 #define Tx_MODE                      1
 #define Rx_MODE                      0
-#define LOCK                         1
+#define AX12_LOCK                    1
 
 #define AX12_MAX_SERVOS              50
 #define AX12_BUFFER_SIZE             32
@@ -244,7 +244,7 @@ protected:
 	int peekData();
 	void beginCom(unsigned long baudRate);
 	void endCom();
-	
+	    
 public:
 	DynamixelSerial(HardwareSerial *ss);
 	
@@ -310,6 +310,41 @@ public:
 	int makeWord(int low, int high);
 	int getLowByte(int val);
 	int getHighByte(int val);	
+    
+    
+	int move2(unsigned char id, int value);
+    
+	class Packet {
+	  bool freeData;
+	  public:
+	    unsigned char *data;
+	    size_t data_size;
+
+	    // wrap a received data stream in an Packet object for analysis
+	    Packet(unsigned char *data, size_t size);
+	    // build a packet into the pre-allocated data array
+	    // if data is null it will be malloc'ed and free'd on destruction.
+	    
+	    Packet(
+	      unsigned char *data, 
+	      size_t        size,
+	      unsigned char id,
+	      unsigned char instruction,
+	      int           parameter_data_size,
+	      ...);
+	    ~Packet();
+	    unsigned char getId();
+	    int getLength();
+	    int getSize();
+	    int getParameterCount();
+	    unsigned char getInstruction();
+            unsigned char getParameter(int n);
+	    bool isValid();
+
+	    void toStream(Stream &stream);
+
+	}; 
+    
 };
 
 

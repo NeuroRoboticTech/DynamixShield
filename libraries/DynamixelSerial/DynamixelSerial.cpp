@@ -1082,7 +1082,7 @@ int DynamixelSerial::moving(unsigned char ID)
 
 int DynamixelSerial::lockRegister(unsigned char ID)
 {    
-	Checksum = (~(ID + AX_LR_LENGTH + AX_WRITE_DATA + AX_LOCK + LOCK))&0xFF;
+	Checksum = (~(ID + AX_LR_LENGTH + AX_WRITE_DATA + AX_LOCK + AX12_LOCK))&0xFF;
 	
 	switchCom(Direction_Pin,Tx_MODE);
     sendData(AX_START);                // Send Instructions over Serial
@@ -1091,7 +1091,7 @@ int DynamixelSerial::lockRegister(unsigned char ID)
 	sendData(AX_LR_LENGTH);
     sendData(AX_WRITE_DATA);
     sendData(AX_LOCK);
-    sendData(LOCK);
+    sendData(AX12_LOCK);
     sendData(Checksum);
 	delayus(TX_DELAY_TIME);
 	switchCom(Direction_Pin,Rx_MODE);
@@ -1301,12 +1301,10 @@ void DynamixelSerial::addServoToSync(int id, int goal_pos, int goal_speed)
 		sync_data[idx+3] = getLowByte(goal_speed);
 		sync_data[idx+4] = getHighByte(goal_speed);
 	}
-
-	total_sync_servos++;	
 	
 	//Serial.print("servos: ");  
-	//Serial.print(g_total_sync_servos);  
-	//Serial.print("idx: ");  
+	//Serial.print(total_sync_servos);  
+	//Serial.print(" idx: ");  
 	//Serial.print(idx);  
 	//Serial.print(" id: ");  
 	//Serial.print(id);  
@@ -1318,10 +1316,12 @@ void DynamixelSerial::addServoToSync(int id, int goal_pos, int goal_speed)
 		
 	//for(int i=0; i<(idx+data_size_per_servo); i++)
 	//{
-	//	Serial.print(g_sync_data[i]);  
+	//	Serial.print(sync_data[i], HEX);  
 	//	Serial.print(", ");
 	//}
-	//Serial.print("\n");
+	//Serial.println("\n");
+
+    total_sync_servos++;	
 }
 
 void DynamixelSerial::writeSyncData(bool print_data)
@@ -1330,7 +1330,7 @@ void DynamixelSerial::writeSyncData(bool print_data)
 	int data_size_per_servo = dataSizePerServoSynch();
 
 	int	length = 4 + (data_size_per_servo * total_sync_servos);		
-    int Checksum = 254 + length + AX_SYNC_WRITE + AX_GOAL_POSITION_L + data_size_per_servo;
+    int Checksum = 254 + length + AX_SYNC_WRITE + AX_GOAL_POSITION_L + (data_size_per_servo-1);
 
 	switchCom(Direction_Pin,Tx_MODE);
     sendData(AX_START);
@@ -1339,16 +1339,11 @@ void DynamixelSerial::writeSyncData(bool print_data)
     sendData(length);
     sendData(AX_SYNC_WRITE);
     sendData(AX_GOAL_POSITION_L);
-    sendData(data_size_per_servo);
+    sendData(data_size_per_servo-1);
 
 	int dataidx=0, id=0;
     for(int servo=0; servo<total_sync_servos; servo++)
     {
-		id = sync_data[dataidx];
-		sendData(id);  //Write the id
-		Checksum += id;
-		dataidx++;
-		
 		//Now write the data for the servo
 		for(int servo_data_idx=0; servo_data_idx<data_size_per_servo; servo_data_idx++)
 		{
@@ -1372,50 +1367,271 @@ void DynamixelSerial::writeSyncData(bool print_data)
 void DynamixelSerial::printSyncData(int length, unsigned char checksum)
 {
 	int data_size_per_servo = dataSizePerServoSynch();
+    int Checksum = BROADCAST_ID + length + AX_SYNC_WRITE + AX_GOAL_POSITION_L + (data_size_per_servo-1);
 	
-	Serial.print(0xFF);  
+    
+	Serial.print(0xFF, HEX);  
 	Serial.print(", ");
 
-	Serial.print(0xFF);  
+	Serial.print(0xFF, HEX);  
 	Serial.print(", ");
 
-	Serial.print(0xFE);  
+	Serial.print(BROADCAST_ID, HEX);  
 	Serial.print(", ");
 
-	Serial.print(length);  
+	Serial.print(length, HEX);  
 	Serial.print(", ");
 
-	Serial.print(AX_SYNC_WRITE);  
+	Serial.print(AX_SYNC_WRITE, HEX);  
 	Serial.print(", ");
 
-	Serial.print(AX_GOAL_POSITION_L);  
+	Serial.print(AX_GOAL_POSITION_L, HEX);  
 	Serial.print(", ");
 
-	Serial.print(AX12_SYNC_DATA_PER_SERVO);  
+	Serial.print(data_size_per_servo-1, HEX);  
 	Serial.print(", ");
 	
 	int dataidx=0, id=0, temp=0;
     for(int servo=0; servo<total_sync_servos; servo++)
     {
-		id = sync_data[dataidx];
-		Serial.print(id);  
-		Serial.print(", ");
-
-		dataidx++;
-		
 		//Now write the data for the servo
 		for(int servo_data_idx=0; servo_data_idx<data_size_per_servo; servo_data_idx++)
 		{
 			temp = sync_data[dataidx];
-			Serial.print(temp);  
+			Serial.print(temp, HEX);  
 			Serial.print(", ");
+			Checksum += temp;
 			dataidx++;
 		}
     } 
-
-	Serial.print(checksum);  
+	unsigned char sum = (0xff - (Checksum % 256));
+    
+	Serial.print(checksum, HEX);  
+	//Serial.print(sum, HEX);  
 	Serial.print("\n");
 }	
+
+unsigned short update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr, unsigned short data_blk_size)
+{
+    unsigned short i, j;
+    unsigned short crc_table[256] = {
+        0x0000, 0x8005, 0x800F, 0x000A, 0x801B, 0x001E, 0x0014, 0x8011,
+        0x8033, 0x0036, 0x003C, 0x8039, 0x0028, 0x802D, 0x8027, 0x0022,
+        0x8063, 0x0066, 0x006C, 0x8069, 0x0078, 0x807D, 0x8077, 0x0072,
+        0x0050, 0x8055, 0x805F, 0x005A, 0x804B, 0x004E, 0x0044, 0x8041,
+        0x80C3, 0x00C6, 0x00CC, 0x80C9, 0x00D8, 0x80DD, 0x80D7, 0x00D2,
+        0x00F0, 0x80F5, 0x80FF, 0x00FA, 0x80EB, 0x00EE, 0x00E4, 0x80E1,
+        0x00A0, 0x80A5, 0x80AF, 0x00AA, 0x80BB, 0x00BE, 0x00B4, 0x80B1,
+        0x8093, 0x0096, 0x009C, 0x8099, 0x0088, 0x808D, 0x8087, 0x0082,
+        0x8183, 0x0186, 0x018C, 0x8189, 0x0198, 0x819D, 0x8197, 0x0192,
+        0x01B0, 0x81B5, 0x81BF, 0x01BA, 0x81AB, 0x01AE, 0x01A4, 0x81A1,
+        0x01E0, 0x81E5, 0x81EF, 0x01EA, 0x81FB, 0x01FE, 0x01F4, 0x81F1,
+        0x81D3, 0x01D6, 0x01DC, 0x81D9, 0x01C8, 0x81CD, 0x81C7, 0x01C2,
+        0x0140, 0x8145, 0x814F, 0x014A, 0x815B, 0x015E, 0x0154, 0x8151,
+        0x8173, 0x0176, 0x017C, 0x8179, 0x0168, 0x816D, 0x8167, 0x0162,
+        0x8123, 0x0126, 0x012C, 0x8129, 0x0138, 0x813D, 0x8137, 0x0132,
+        0x0110, 0x8115, 0x811F, 0x011A, 0x810B, 0x010E, 0x0104, 0x8101,
+        0x8303, 0x0306, 0x030C, 0x8309, 0x0318, 0x831D, 0x8317, 0x0312,
+        0x0330, 0x8335, 0x833F, 0x033A, 0x832B, 0x032E, 0x0324, 0x8321,
+        0x0360, 0x8365, 0x836F, 0x036A, 0x837B, 0x037E, 0x0374, 0x8371,
+        0x8353, 0x0356, 0x035C, 0x8359, 0x0348, 0x834D, 0x8347, 0x0342,
+        0x03C0, 0x83C5, 0x83CF, 0x03CA, 0x83DB, 0x03DE, 0x03D4, 0x83D1,
+        0x83F3, 0x03F6, 0x03FC, 0x83F9, 0x03E8, 0x83ED, 0x83E7, 0x03E2,
+        0x83A3, 0x03A6, 0x03AC, 0x83A9, 0x03B8, 0x83BD, 0x83B7, 0x03B2,
+        0x0390, 0x8395, 0x839F, 0x039A, 0x838B, 0x038E, 0x0384, 0x8381,
+        0x0280, 0x8285, 0x828F, 0x028A, 0x829B, 0x029E, 0x0294, 0x8291,
+        0x82B3, 0x02B6, 0x02BC, 0x82B9, 0x02A8, 0x82AD, 0x82A7, 0x02A2,
+        0x82E3, 0x02E6, 0x02EC, 0x82E9, 0x02F8, 0x82FD, 0x82F7, 0x02F2,
+        0x02D0, 0x82D5, 0x82DF, 0x02DA, 0x82CB, 0x02CE, 0x02C4, 0x82C1,
+        0x8243, 0x0246, 0x024C, 0x8249, 0x0258, 0x825D, 0x8257, 0x0252,
+        0x0270, 0x8275, 0x827F, 0x027A, 0x826B, 0x026E, 0x0264, 0x8261,
+        0x0220, 0x8225, 0x822F, 0x022A, 0x823B, 0x023E, 0x0234, 0x8231,
+        0x8213, 0x0216, 0x021C, 0x8219, 0x0208, 0x820D, 0x8207, 0x0202
+    };
+ 
+    for(j = 0; j < data_blk_size; j++)
+    {
+        i = ((unsigned short)(crc_accum >> 8) ^ data_blk_ptr[j]) & 0xFF;
+        crc_accum = (crc_accum << 8) ^ crc_table[i];
+    }
+ 
+    return crc_accum;
+}
+/*
+int DynamixelSerial::move2(unsigned char ID, int Position)
+{
+    unsigned char data[x];
+    
+    char Position_H,Position_L;
+    Position_H = Position >> 8;           // 16 bits - 2 x 8 bits variables
+    Position_L = Position;
+
+    data[0] = AX_START;
+    data[1] = AX_START;
+    data[2] = 0xFD;
+    data[3] = 0;
+    data[4] = ID;
+    data[5] = LengthLow;
+    data[6] = LengthHigh;
+    data[7] = AX_WRITE_DATA;
+    data[8] = AX_GOAL_POSITION_L;
+    data[9] = 0x00;  //High byte of goal position
+    data[10] = Position_L;
+    data[11] = Position_H;
+    
+    unsigned short checksum = calc_crc16(;
+    
+
+	Checksum = (~(ID + AX_GOAL_LENGTH + AX_WRITE_DATA + AX_GOAL_POSITION_L + Position_L + Position_H))&0xFF;
+    
+	switchCom(Direction_Pin,Tx_MODE);
+    sendData(AX_START);                 // Send Instructions over Serial
+    sendData(AX_START);
+    sendData(ID);
+    sendData(AX_GOAL_LENGTH);
+    sendData(AX_WRITE_DATA);
+    sendData(AX_GOAL_POSITION_L);
+    sendData(Position_L);
+    sendData(Position_H);
+    sendData(Checksum);
+	delayus(TX_DELAY_TIME);
+	switchCom(Direction_Pin,Rx_MODE);
+
+}
+*/
+
+int DynamixelSerial::move2(unsigned char id, int value){
+
+    /*Dynamixel 2.0 communication protocol
+      used by Dynamixel XL-320 and Dynamixel PRO only.
+    */
+
+    // technically i think we need 14bytes for this packet 
+    int Address = AX_GOAL_POSITION_L;
+    
+    const int bufsize = 16;
+
+    byte txbuffer[bufsize];
+
+    Packet p(txbuffer,bufsize,id,0x03,4,
+	getLowByte(Address),
+	getHighByte(Address),
+	getLowByte(value),
+	getHighByte(value));
+
+    int size = p.getSize();
+	switchCom(Direction_Pin,Tx_MODE);
+    stream->write(txbuffer,size);
+    stream->flush();
+	delayus(TX_DELAY_TIME);
+	switchCom(Direction_Pin,Rx_MODE);
+
+    return bufsize;	
+}
+
+DynamixelSerial::Packet::Packet(
+	unsigned char *data,
+	size_t data_size,
+	unsigned char id,
+	unsigned char instruction,
+	int parameter_data_size,
+	...) {
+
+
+    // [ff][ff][fd][00][id][len1][len2] { [instr][params(parameter_data_size)][crc1][crc2] }
+    unsigned int length=3+parameter_data_size;
+    if(!data) {
+	// [ff][ff][fd][00][id][len1][len2] { [data(length)] }
+	this->data_size = 7+length;   
+	this->data = (unsigned char*)malloc(data_size);
+	this->freeData = true;
+    } else {
+	this->data = data;
+	this->data_size = data_size;
+	this->freeData = false;
+    }
+    this->data[0]=0xFF;
+    this->data[1]=0xFF;
+    this->data[2]=0xFD;
+    this->data[3]=0x00;
+    this->data[4]=id;
+    this->data[5]=length&0xff;
+    this->data[6]=(length>>8)&0xff;
+    this->data[7]=instruction;
+    va_list args;
+    va_start(args, parameter_data_size); 
+    for(int i=0;i<parameter_data_size;i++) {
+	unsigned char arg = va_arg(args, int);
+	this->data[8+i]=arg;
+    }
+    unsigned short crc = update_crc(0,this->data,this->getSize()-2);
+    this->data[8+parameter_data_size]=crc&0xff;
+    this->data[9+parameter_data_size]=(crc>>8)&0xff;
+    va_end(args);
+}
+
+DynamixelSerial::Packet::Packet(unsigned char *data, size_t size) {
+    this->data = data;
+    this->data_size = size;
+    this->freeData = false;
+}
+
+
+DynamixelSerial::Packet::~Packet() {
+    if(this->freeData==true) {
+	free(this->data);
+    }
+}
+
+void DynamixelSerial::Packet::toStream(Stream &stream) {
+    stream.print("id: ");
+    stream.println(this->getId(),DEC);
+    stream.print("length: ");
+    stream.println(this->getLength(),DEC);
+    stream.print("instruction: ");
+    stream.println(this->getInstruction(),HEX);
+    stream.print("parameter count: ");
+    stream.println(this->getParameterCount(), DEC);
+    for(int i=0;i<this->getParameterCount(); i++) {
+	stream.print(this->getParameter(i),HEX);
+	if(i<this->getParameterCount()-1) {
+	    stream.print(",");
+	}
+    }
+    stream.println();
+    stream.print("valid: ");
+    stream.println(this->isValid()?"yes":"no");
+}
+
+unsigned char DynamixelSerial::Packet::getId() {
+    return data[4];
+}
+
+int DynamixelSerial::Packet::getLength() {
+    return data[5]+((data[6]&0xff)<<8);
+}
+
+int DynamixelSerial::Packet::getSize() {
+    return getLength()+7;
+}
+
+int DynamixelSerial::Packet::getParameterCount() {
+    return getLength()-3;
+}
+
+unsigned char DynamixelSerial::Packet::getInstruction() {
+    return data[7];
+}
+
+unsigned char DynamixelSerial::Packet::getParameter(int n) {
+    return data[8+n];
+}
+
+bool DynamixelSerial::Packet::isValid() {
+    int length = getLength();
+    unsigned short storedChecksum = data[length+5]+(data[length+6]<<8);
+    return storedChecksum == update_crc(0,data,length+5);
+}
 
 #ifdef __SAM3X8E__
 
