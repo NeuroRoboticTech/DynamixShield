@@ -1,6 +1,6 @@
 #include <DynamixelSerial.h>
 
-#define ENABLE_DEBUG 1
+//#define ENABLE_DEBUG 1
 
 #define SERVO_COUNT 5
 #define AXIS_COUNT 4
@@ -50,7 +50,7 @@ void setServoPositions(int pos) {
 }
 
 void setup () {
-   //SetSystemCoreClockFor1Mbaud();
+   SetSystemCoreClockFor1Mbaud();
  
 #ifdef ENABLE_DEBUG  
   Serial.begin(57600);

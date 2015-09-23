@@ -69,10 +69,10 @@ void setup()
 
   ap_cnt = 0;
 
-  //Serial.println("Resetting module");
-  //cmd_send("AT+RST"); // reset module
-  //WaitForResponse("OK", "FAIL");
-  //printResults(40);
+  Serial.println("Resetting module");
+  cmd_send("AT+RST"); // reset module
+  WaitForResponse("OK", "FAIL");
+  printResults(40);
   
   //Serial.println("turn off server on port 80.");
   //cmd_send("AT+CIPSERVER=0");

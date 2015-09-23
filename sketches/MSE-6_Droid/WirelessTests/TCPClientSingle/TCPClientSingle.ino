@@ -25,7 +25,7 @@
 #define HOST_NAME   "192.168.10.107"
 #define HOST_PORT   (8090)
 
-ESP8266 wifi(Serial2);
+ESP8266 wifi(Serial2, 115200);
 
 void setup(void)
 {
