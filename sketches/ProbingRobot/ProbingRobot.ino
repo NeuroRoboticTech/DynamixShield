@@ -30,7 +30,7 @@ Servo gripperServo;   //create an servo object for the 9g FT-FS90MG micro servo
 #define RIGHT_CLAW_POS_MIN 312
 #define RIGHT_CLAW_POS_MAX 612
 
-//#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG 1
 
 int wristPos = 512;
 int leftClawPos = 512;
@@ -162,6 +162,7 @@ void processWrist() {
     wristPos += wristAdd;
 
 #ifdef ENABLE_DEBUG
+  //
   Serial.print("Wrist Pos: "); Serial.println(wristPos); 
 #endif
 
@@ -226,6 +227,7 @@ bool processFastTurns() {
         
   return false;
 }
+
 void checkCommander() {
   
   if(command.ReadMsgs() > 0) {
@@ -242,15 +244,15 @@ void checkCommander() {
 
     //If the commander data has changed then fill out the
     //custom sysex byte array and send it.    
-#ifdef ENABLE_DEBUG
-     Serial.print("Commander ");
-     Serial.print(", WalkV: "); Serial.print(command.walkV); 
-     Serial.print(", WalkH: "); Serial.print(command.walkH); 
-     Serial.print(", LookV: "); Serial.print(command.lookV); 
-     Serial.print(", LookH: "); Serial.print(command.lookH); 
-     Serial.print(", Buttons: "); Serial.print(command.buttons); 
-     Serial.println ("");
-#endif
+//#ifdef ENABLE_DEBUG
+//     Serial.print("Commander ");
+//     Serial.print(", WalkV: "); Serial.print(command.walkV); 
+//     Serial.print(", WalkH: "); Serial.print(command.walkH); 
+//     Serial.print(", LookV: "); Serial.print(command.lookV); 
+//     Serial.print(", LookH: "); Serial.print(command.lookH); 
+//     Serial.print(", Buttons: "); Serial.print(command.buttons); 
+//     Serial.println ("");
+//#endif
   }  
 }
 

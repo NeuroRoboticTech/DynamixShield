@@ -108,6 +108,14 @@ DynamixelSerial::DynamixelSerial(HardwareSerial *ss){
 	stream = ss;
 	use_speed_synch = true;
     Status_Return_Level = 2;
+    
+#ifdef __SAM3X8E__
+    SetSystemCoreClockFor1Mbaud();
+#endif        
+
+    if(stream == NULL) {
+        stream = &Serial1;
+    }
 }
 
 void DynamixelSerial::sendData(const uint8_t data)
@@ -172,8 +180,8 @@ int DynamixelSerial::read_error(void)
 			readData();                                    // Ax-12 ID
 			readData();                                    // Length
 			Error_Byte = readData();                       // Error
-			Serial.print("Received Error: ");
-			Serial.println(Error_Byte);
+			//Serial.print("Received Error: ");
+			//Serial.println(Error_Byte);
             
             if(Time_Counter == TIME_OUT)
                 Serial.println("Timed out");

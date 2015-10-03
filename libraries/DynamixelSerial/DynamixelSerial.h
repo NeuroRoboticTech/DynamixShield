@@ -201,7 +201,13 @@
 #include "HardwareSerial.h"
 
 #ifdef __SAM3X8E__
-void SetSystemCoreClockFor1Mbaud();
+    void SetSystemCoreClockFor1Mbaud();
+#endif
+
+#ifdef __SAMD21G18A__ || __SAMD21G18A__
+    #define DYN_CTRL_PIN 2
+#else
+    #define DYN_CTRL_PIN 22
 #endif
 
 class DynamixelSerial {
@@ -246,9 +252,10 @@ protected:
 	void endCom();
 	    
 public:
-	DynamixelSerial(HardwareSerial *ss);
+	DynamixelSerial(HardwareSerial *ss = NULL);
 	
-	void begin(long baud, unsigned char directionPin);
+	void begin(long baud = 1000000, 
+        unsigned char directionPin = DYN_CTRL_PIN);
 	void begin(long baud);
 	void end(void);
 	
