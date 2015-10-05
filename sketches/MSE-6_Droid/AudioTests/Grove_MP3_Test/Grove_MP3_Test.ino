@@ -38,11 +38,13 @@ int buttonStatus = 0;           // This is used to hold the status of the button
 
 
 void setup(){
+  Serial.begin(57600);
+  Serial.println("setup begin");
+
   //Initialise the Grove MP3 Module
   delay(2500);
   mp3.begin(9600);
-  
-        
+            
   // initialize the pushbutton and switch pin as an input:
   pinMode(buttonPin, INPUT);
   pinMode(switchPin, INPUT);
@@ -93,7 +95,6 @@ void loop(){
 
 // demonstrate_GET_FUNCTIONS  will show you how to retrieve some useful information from the Grove MP3 Player (using the Serial Monitor).
 void demonstrate_GET_FUNCTIONS(){
-        Serial.begin(57600);
         Serial.print("Volume: ");
         Serial.println(getVolume());
         Serial.print("Playing State: ");

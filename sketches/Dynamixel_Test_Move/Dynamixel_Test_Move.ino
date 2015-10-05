@@ -2,7 +2,7 @@
 
 #define SERVO_ID1 1
 
-DynamixelSerial Dynamixel;
+DynamixelSerial Dynamixel; // or Dynamixel(&Serial1);
 
 void setup () {
   Serial.begin(57600);
@@ -13,7 +13,7 @@ void setup () {
 
   delay(1000);
   Serial.println("Resetting positions");
-  Dynamixel.move2 (SERVO_ID1,512);
+  Dynamixel.move (SERVO_ID1,512);
   delay (100); 
 } 
 
@@ -25,6 +25,7 @@ void MoveToPos(int servo, int targetPos, int targetSpeed)
 
   int prevPos = -1;
   int pos = Dynamixel.readPosition(servo);
+  int vel = 0;
   int notMoved=0;
   //Wait until it has reached the new position, or close to it.
   while(abs(pos-targetPos) > 3)
@@ -32,6 +33,7 @@ void MoveToPos(int servo, int targetPos, int targetSpeed)
     // Read the current servo Position 
     prevPos = pos;
     pos = Dynamixel.readPosition(servo);       
+    vel = Dynamixel.readSpeed(servo);
 
     //If the position is not changing then it is not moving
     if(abs(prevPos-pos) == 0) {
@@ -46,7 +48,9 @@ void MoveToPos(int servo, int targetPos, int targetSpeed)
 
     // Print the current servo Position 
     Serial.print("Pos: ");
-    Serial.println(pos);
+    Serial.print(pos);
+    Serial.print(",  Speed: ");
+    Serial.println(vel);
 
     delay(100);
   }
