@@ -190,8 +190,8 @@ int DynamixelSerial::read_error(void)
 		}
 	}
 
-	Serial.print("Nothing Recieved: ");
-	Serial.println(-1);
+	//Serial.print("Nothing Recieved: ");
+	//Serial.println(-1);
 	return (-1);											 // No Ax Response
 }
 
