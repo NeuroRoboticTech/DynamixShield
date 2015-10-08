@@ -28,16 +28,17 @@ void setup()
     Serial.println("Starting setup");    
 }
 
-void ReadPot()
+void readPot()
 {
     // Read the value of the angle sensor.
     buffer[bufferIdx] = analogRead(potentiometer);
     bufferIdx++;
-    if(bufferIdx > 9)
+    if(bufferIdx > 9) {
       bufferIdx = 0;
+    }
 }
 
-int GetRollingAverage()
+int getRollingAverage()
 {
   int total = 0;
   for(int i=0; i<10; i++)
@@ -51,8 +52,8 @@ int GetRollingAverage()
 
 void loop()
 {
-    ReadPot();
-    int sensorPosition = GetRollingAverage();
+    readPot();
+    int sensorPosition = getRollingAverage();
     
     // The analog value from the angle sensor is between 0 and 1023, but
     // the servo only accepts values between 0 and 179; use the map()

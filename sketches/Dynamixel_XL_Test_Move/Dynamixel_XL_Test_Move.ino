@@ -17,50 +17,13 @@ void setup () {
   delay (100); 
 } 
 
-void MoveToPos(int servo, int targetPos)
-{  
-  delay(100);
-
-  Dynamixel.move2(servo, targetPos);
-
-  int prevPos = -1;
-  int pos = Dynamixel.readPosition(servo);
-  int vel = 0;
-  int notMoved=0;
-  //Wait until it has reached the new position, or close to it.
-  while(abs(pos-targetPos) > 3)
-  {    
-    // Read the current servo Position 
-    prevPos = pos;
-    pos = Dynamixel.readPosition(servo);       
-    vel = Dynamixel.readSpeed(servo);
-
-    //If the position is not changing then it is not moving
-    if(abs(prevPos-pos) == 0) {
-      notMoved++;    
-    }
-
-    //If it is not moving then did we get an error in transmission?
-    //Send the move command to be sure.
-    if(notMoved == 5) {
-      Dynamixel.move2 (servo, targetPos);
-    }
-
-    // Print the current servo Position 
-    Serial.print("Pos: ");
-    Serial.print(pos);
-    Serial.print(",  Speed: ");
-    Serial.println(vel);
-
-    delay(100);
-  }
-}
-
 void loop () { 
-  Serial.println("Move to 450");
-  MoveToPos(SERVO_ID1, 0);
+  Serial.println("Move to 0");
+  Dynamixel.move2(SERVO_ID1, 0);
+  delay(1000);
   
-  Serial.println("Move to 650");
-  MoveToPos(SERVO_ID1, 1023);
+  Serial.println("Move to 1023");
+  Dynamixel.move2(SERVO_ID1, 1023);
+  delay(1000);
 } 
 

@@ -1,6 +1,7 @@
 #include <DynamixelSerial.h>
 
 #define SERVO_ID1 1
+#define SERVO_ID2 2
 
 DynamixelSerial Dynamixel; // or Dynamixel(&Serial1);
 
@@ -14,6 +15,7 @@ void setup () {
   delay(1000);
   Serial.println("Resetting positions");
   Dynamixel.move (SERVO_ID1,512);
+  Dynamixel.move (SERVO_ID2,512);
   delay (100); 
 } 
 
@@ -47,7 +49,9 @@ void MoveToPos(int servo, int targetPos, int targetSpeed)
     }
 
     // Print the current servo Position 
-    Serial.print("Pos: ");
+    Serial.print("Servo: ");
+    Serial.print(servo);
+    Serial.print(", Pos: ");
     Serial.print(pos);
     Serial.print(",  Speed: ");
     Serial.println(vel);
@@ -57,10 +61,16 @@ void MoveToPos(int servo, int targetPos, int targetSpeed)
 }
 
 void loop () { 
-  Serial.println("Move to 450");
+  Serial.println("Move 1 to 450");
   MoveToPos(SERVO_ID1, 450, 30);
-  
-  Serial.println("Move to 650");
+
+  Serial.println("Move 2 to 100");
+  MoveToPos(SERVO_ID2, 100, 50);
+
+  Serial.println("Move 1 to 650");
   MoveToPos(SERVO_ID1, 650, 150);
+
+  Serial.println("Move 2 to 850");
+  MoveToPos(SERVO_ID2, 850, 80);
 } 
 

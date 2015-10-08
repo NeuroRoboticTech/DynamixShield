@@ -1,7 +1,7 @@
 #include <DynamixelSerial.h>
 
-#define OLD_SERVO_ID 1
-#define NEW_SERVO_ID 5
+int OLD_SERVO_ID = 1;
+int NEW_SERVO_ID = 2;
 
 DynamixelSerial Dynamixel;
 
