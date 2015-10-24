@@ -10,8 +10,8 @@
 #include "nuke.h"
 
 // Define one or the other depending upon which servo type you are using.
-#define AX12_HEXAPOD
-//#define AX18_HEXAPOD
+//#define AX12_HEXAPOD
+#define AX18_HEXAPOD
 
 #define INCLUDE_GRIPPER
 
@@ -43,7 +43,7 @@
 
 #endif
 
-DynamixelSerial dynamix(&Serial2);
+DynamixelSerial dynamix(&Serial1);
 BioloidDynamixSerial bioloid(&dynamix);
 
 CommanderHS command = CommanderHS(&Serial3);
@@ -62,49 +62,17 @@ int multiplier;
 #endif
 
 void configureServos() {
-  SetSystemCoreClockFor1Mbaud();
-
   // setup serial
   Serial.begin(57600);
   while(!Serial);
   Serial.println("Starting setup");
 
   //Start the dynamixel serial controller
-  dynamix.begin (1000000, 22); 
+  dynamix.begin (); 
 
   //Start the XBee commander controller.
   command.begin(38400);
     
-//  Serial.println("Set status return level");
-//  for(int servo=1; servo<=18; servo++) {
-//    dynamix.setStatusReturnLevel(servo, 1);
-//    delay(50);
-//  }
-  
-//  Serial.println("Set servo mode");
-//  //Set the all servos to not be in wheel mode
-//  for(int servo=1; servo<=18; servo++) {
-//    dynamix.setEndless(servo, false);
-//    delay(50);
-//  }
-
-//  Serial.println("Set limits");
-//  //Set limits for all servos
-//  for(int servo=1; servo<=18; servo++) {
-//    dynamix.setCWLimit(servo, 0);
-//    delay(50);
-//    dynamix.setCCWLimit(servo, 1023);
-//    delay(50);
-//  }
-
-//  Serial.println("Set defualt position");
-//  //reset all servos to start position
-//  for(int servo=1; servo<=18; servo++) {
-//    dynamix.moveSpeed(servo, 512, 100);
-//    delay(50);
-//  }
-
-
 #ifdef INCLUDE_GRIPPER
   dynamix.moveSpeed (WRIST_ID, 512, 150);
 
@@ -126,12 +94,12 @@ void setup(){
 
   // wait, then check the voltage (LiPO safety)
   delay (1000);
-  float voltage = 0; //////(ax12GetRegister (1, AX_PRESENT_VOLTAGE, 1)) / 10.0;
+  float voltage = dynamix.readVoltage(1);
   Serial.print ("System Voltage: ");
   Serial.print (voltage);
   Serial.println (" volts.");
-  //if (voltage < 10.0)
-  //  while(1);
+  if (voltage < 10.0)
+    while(1);
 
   // stand up slowly
   bioloid.poseSize = 18;
@@ -231,63 +199,68 @@ void processGripper() {
 
 void loop(){
   // take commands
-  if(command.ReadMsgs() > 0){
+  if(command.ReadMsgs() > 0) {
     digitalWrite(0,HIGH-digitalRead(0));
+    
     // select gaits
     if(command.buttons&BUT_R1){ 
       gaitSelect(RIPPLE_SMOOTH); 
       multiplier=RIPPLE_SPEED;
       Serial.println("RIPPLE_SMOOTH");
     }
+    
     if(command.buttons&BUT_R2){ 
       gaitSelect(AMBLE_SMOOTH); 
       multiplier=AMBLE_SPEED;
       Serial.println("AMBLE_SMOOTH");
     }
+    
     if(command.buttons&BUT_R3){ 
       gaitSelect(RIPPLE); 
       multiplier=RIPPLE_SPEED;
       Serial.println("RIPPLE");
     }
+    
     if(command.buttons&BUT_L4){ 
       gaitSelect(AMBLE); 
       multiplier=AMBLE_SPEED;
       Serial.println("AMBLE");
     }
+    
     if(command.buttons&BUT_L5){ 
       gaitSelect(TRIPOD); 
       multiplier=TRIPOD_SPEED;
       Serial.println("TRIPOD");
     }
+    
     if(command.buttons&BUT_L6){ 
       gaitSelect(TRIPOD); 
       multiplier=TOP_SPEED;
       Serial.println("TRIPOD_TOP");
     }
+    
     // set movement speed
     if((command.walkV) > 5 || (command.walkV < -5) ){
       Xspeed = (multiplier*command.walkV)/2;
     }
-    else
-    {
+    else {
       Xspeed = 0;
     }
     
     if((command.walkH) > 5 || (command.walkH < -5) ){   
-    Yspeed = (multiplier*command.walkH)/2;
+      Yspeed = (multiplier*command.walkH)/2;
     }
-    else
-    {
+    else {
      Yspeed = 0;
     }
     
     if((command.lookH) > 5 || (command.lookH < -5) ){
-    Rspeed = -(command.lookH)/100.0;
+      Rspeed = -(command.lookH)/100.0;
     }
-    else
-    {
+    else {
       Rspeed = 0;
     }
+  }
     
 #ifdef INCLUDE_GRIPPER
     processGripperSelection();
@@ -302,19 +275,6 @@ void loop(){
     }
 #endif
     
-// Use the phoenix code if you want pretty body rotation. :)    
-//
-//    if((command.buttons&BUT_LT) > 0){
-//      bodyRotY = (((float)command.lookV))/300.0;
-//      bodyRotZ = ((float)command.lookH)/300.0;  
-//      bodyRotX = ((float)command.walkH)/300.0;  
-//      Rspeed = 0;
-//      Xspeed = 0;
-//      Yspeed = 0;  
-//    }
-
- }
-
   // if our previous interpolation is complete, recompute the IK
   if(bioloid.interpolating == 0){
     doIK();
@@ -322,4 +282,5 @@ void loop(){
   }
   // update joints
   bioloid.interpolateStep();  
+  
 }
