@@ -1,6 +1,6 @@
 /*
-  BioloidDynamixSerial - DynamixShield Library for Bioloid Pose Engine
-  Copyright (c) 2015 David Cofer.  All right reserved.
+  BioloidController.h - ArbotiX Library for Bioloid Pose Engine
+  Copyright (c) 2008-2012 Michael E. Ferguson.  All right reserved.
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -15,6 +15,10 @@
   You should have received a copy of the GNU Lesser General Public
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+  
+  Modified by David Cofer of NeuroRobotic Technologies to be able to 
+  work with the DynamixShield. 
+  email: dcofer@NeuroRobotic.com  
 */
 
 #ifndef BioloidDynamixSerial_h
