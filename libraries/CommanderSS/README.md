@@ -1,6 +1,6 @@
 # CommanderSS
 This is a modification of the Commander library for the Arbotix Commander that is available here:
-http://learn.trossenrobotics.com/arbotix/12-arbotix-commander-setup. I have modified it into two 
+https://github.com/Interbotix/arbotix/tree/master/libraries/Commander. I have modified it into two 
 versions. This one for Hardware Serial and another for Software serial. This one allows you to pass in
 any software serial connection for the communications. 
 
