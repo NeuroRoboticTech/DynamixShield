@@ -1,5 +1,5 @@
 # BioloidDynamixSerial
-This is a modification of the BioloidController library for the Arbotix BioloidController that is available here:
+This is a modification of the BioloidController library in the Arbotix repository that is available here:
 https://github.com/Interbotix/arbotix/tree/master/libraries/Bioloid. I have modified it to work with the new DynamixSerial class for the DynamixShield. 
 
 ## Installation
