@@ -1,11 +1,10 @@
 #include <Servo.h>
 
 // Define the pins to which the servo and sensor are connected.
-const int pinServo1 = 2;
-const int pinServo2 = 3;
-const int joyXPin = 0;
-const int joyYPin = 1;
-
+const int pinServo1 = 6;
+const int pinServo2 = 4;
+const int joyXPin = 4;
+const int joyYPin = 6;
 int bufferX[10];
 int bufferIdxX = 0;
 int bufferY[10];
@@ -17,23 +16,28 @@ Servo servo2;
 
 void setup()
 {
+    Serial.begin(57600);
+    
+    while(!Serial);
+    Serial.println("Starting setup");    
+
     for(int i=0; i<10; i++)
     {
       bufferX[i] = 0;
       bufferY[i] = 0;
     }  
+
+    Serial.println("Attaching servos");    
     // Tell the Servo object which pin to use to control the servo.
     servo1.attach(pinServo1);
     servo2.attach(pinServo2);
 
+    Serial.println("Configure inputs");    
     // Configure the joystick sensor's pin for input signals.
     pinMode(joyXPin, INPUT);
     pinMode(joyYPin, INPUT);
-  
-    Serial.begin(57600);
-    
-    while(!Serial);
-    Serial.println("Starting setup");    
+
+    Serial.println("Finished setup.");    
 }
 
 void readPots()
@@ -83,7 +87,7 @@ void loop()
     servo1.write(joyXShaft);
     servo2.write(joyYShaft);
 
-    Serial.println(String(joyX) + ", " + String(joyXShaft) +
+    Serial.println(String(joyX) + ", " + String(joyXShaft) + ", " +
                    String(joyY) + ", " + String(joyYShaft));
     
     delay(15);
