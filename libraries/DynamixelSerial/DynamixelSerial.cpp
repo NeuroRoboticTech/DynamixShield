@@ -151,6 +151,13 @@ int DynamixelSerial::peekData()
 		return 0;
 }
 
+void DynamixelSerial::flushData()
+{
+  if(stream) {
+    stream->flush();    
+  }
+}
+
 void DynamixelSerial::beginCom(unsigned long baudRate)
 {
 	if(stream)
@@ -341,6 +348,22 @@ int DynamixelSerial::moveSpeed(unsigned char ID, int Position, int Speed)
         return (read_error());                // Return the read error
     else
         return 0;
+}
+
+int DynamixelSerial::stop(unsigned char ID)
+{
+  //First set speed to slowest setting.
+  setSpeed(ID, 1);
+  delay(10);
+  
+  //Now get the servo position
+  int pos = readPosition(ID);
+  
+  //And set the goal position to that value.
+  move(ID, pos);
+
+  //Serial.print("Stop Pos: ");
+  //Serial.println(pos);
 }
 
 int DynamixelSerial::setEndless(unsigned char ID, bool Status)
@@ -635,6 +658,8 @@ int DynamixelSerial::readPosition(unsigned char ID)
 int DynamixelSerial::readRegister(unsigned char id, int regstart, int length)
 {	
     Checksum = (~(id + 6 + regstart + length))&0xFF;
+
+  flushData();
   
 	switchCom(Direction_Pin,Tx_MODE);
     sendData(AX_START);
@@ -656,14 +681,17 @@ int DynamixelSerial::readRegister(unsigned char id, int regstart, int length)
     }
 	
     while (availableData() > 0){
+    //Serial.println("Read register data");
 		Incoming_Byte = readData();
 		if ( (Incoming_Byte == 255) & (peekData() == 255) ){
 			readData();                            // Start Bytes
 			readData();                            // Ax-12 ID
 			readData();                            // Length
-			if( (Error_Byte = readData()) != 0 )   // Error
+			if( (Error_Byte = readData()) != 0 ) {   // Error
+        //Serial.print("Error byte: "); Serial.println(Error_Byte);
 				return (Error_Byte*(-1));
-    
+			}
+         
 			Position_Low_Byte = readData();            // Position Bytes
 			
 			if(length == 2)
@@ -1144,6 +1172,12 @@ int DynamixelSerial::setCWLimit(unsigned char ID, int limit)
 int DynamixelSerial::setCCWLimit(unsigned char ID, int limit)
 {
     setRegister2(ID, AX_CCW_ANGLE_LIMIT_L, limit);
+    return 0;
+}
+
+int DynamixelSerial::setSpeed(unsigned char ID, int speed)
+{
+    setRegister2(ID, AX_GOAL_SPEED_L, speed);
     return 0;
 }
    
